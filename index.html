@@ -119,6 +119,9 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
 .call-sheet{max-height:calc(100dvh - 20px);overflow-y:auto}
 .controls-stage.keypad-open .inline-keypad{overflow:hidden}
 
+
+/* No on-screen status text during calls — voice only */
+.call-caption{display:none!important;min-height:0!important;margin:0!important;padding:0!important;height:0!important;overflow:hidden!important;border:0!important}
 </style>
 </head>
 <body>
@@ -159,7 +162,6 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     <div class="call-topline"><span>ToneCOM call</span><span class="secure-chip" id="transportChip">TLS</span></div>
     <div class="call-suffix" id="callSuffix">.com</div>
     <div class="call-host" id="callHost">voice.example.com</div>
-    <div class="call-caption" id="callCaption" aria-live="polite"></div>
     <div class="controls-stage">
       <div class="call-controls">
         <button class="call-control" id="muteButton" aria-pressed="false">
@@ -384,7 +386,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     if (!active || !active.frame || !active.frame.contentWindow) return;
     try { active.frame.contentWindow.postMessage({tonecom:1, ...msg}, active.origin); } catch {}
   }
-  function setCaption(text) { $('callCaption').textContent = String(text || '').slice(0, MAX_CAPTION); }
+  function setCaption(text) { const el = $('callCaption'); if (el) el.textContent = String(text || '').slice(0, MAX_CAPTION); }
   function setKeypad(open) {
     $('inlineKeypad').hidden = !open;
     const stage = document.querySelector('.controls-stage');

@@ -26,28 +26,53 @@
    * the first that returns playable audio wins. Prefer {data, mime} so we
    * can decode into a WebRTC track without cross-origin media restrictions.
    * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------
+   * Free TTS APIs tried in order. First success wins. All return audio
+   * bytes for WebRTC playback — never text.
+   * ------------------------------------------------------------------ */
+  async function fetchAudio(url, init) {
+    const res = await fetch(url, { cache: 'no-store', ...init });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.arrayBuffer();
+    if (!data.byteLength) throw new Error('empty body');
+    const mime = (res.headers.get('content-type') || 'audio/mpeg').split(';')[0].trim() || 'audio/mpeg';
+    return { data, mime };
+  }
+
   const TTS_PROVIDERS = [
     {
-      name: 'StreamElements',
+      name: 'StreamElements Brian',
       async synthesize(text) {
-        const url = 'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(text);
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.arrayBuffer();
-        if (!data.byteLength) throw new Error('empty body');
-        const mime = (res.headers.get('content-type') || 'audio/mpeg').split(';')[0].trim();
-        return { data, mime };
+        return fetchAudio(
+          'https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=' + encodeURIComponent(text)
+        );
       }
     },
     {
-      name: 'Google Translate TTS',
+      name: 'StreamElements Jessica',
       async synthesize(text) {
-        // Unofficial endpoint; chunks must stay short. We already sentence-split upstream.
-        const q = text.slice(0, 180);
-        const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=' + encodeURIComponent(q);
-        const res = await fetch(url, {
+        return fetchAudio(
+          'https://api.streamelements.com/kappa/v2/speech?voice=Jessica&text=' + encodeURIComponent(text)
+        );
+      }
+    },
+    {
+      name: 'StreamElements Amy',
+      async synthesize(text) {
+        return fetchAudio(
+          'https://api.streamelements.com/kappa/v2/speech?voice=Amy&text=' + encodeURIComponent(text)
+        );
+      }
+    },
+    {
+      name: 'SpeechSter',
+      async synthesize(text) {
+        // Free REST API, no key: POST /api/tts → audio/mpeg
+        const res = await fetch('https://ahm7xmakki.com/api/tts', {
+          method: 'POST',
           cache: 'no-store',
-          headers: { 'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voiceIndex: 1, text: text.slice(0, 1900), pitch: 0, rate: 0 })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.arrayBuffer();
@@ -56,15 +81,31 @@
       }
     },
     {
-      name: 'StreamElements (Jessica)',
+      name: 'Google Translate TTS',
       async synthesize(text) {
-        const url = 'https://api.streamelements.com/kappa/v2/speech?voice=Jessica&text=' + encodeURIComponent(text);
-        const res = await fetch(url, { cache: 'no-store' });
+        const q = text.slice(0, 180);
+        return fetchAudio(
+          'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=' + encodeURIComponent(q),
+          { headers: { 'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8' } }
+        );
+      }
+    },
+    {
+      name: 'Streamlabs',
+      async synthesize(text) {
+        // Public Streamlabs TTS endpoint used by many streamer tools
+        const url = 'https://streamlabs.com/polly/speak';
+        const res = await fetch(url, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice: 'Brian', service: 'Polly' })
+        });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.arrayBuffer();
-        if (!data.byteLength) throw new Error('empty body');
-        const mime = (res.headers.get('content-type') || 'audio/mpeg').split(';')[0].trim();
-        return { data, mime };
+        const json = await res.json();
+        const speakUrl = json.speak_url || (json.success && json.speak_url);
+        if (!speakUrl) throw new Error('no speak_url');
+        return fetchAudio(speakUrl);
       }
     }
   ];
@@ -75,12 +116,10 @@
       for (const provider of TTS_PROVIDERS) {
         try {
           const result = await provider.synthesize(text);
-          if (!result || !result.data || !result.data.byteLength) {
-            throw new Error('no audio data');
-          }
+          if (!result || !result.data || !result.data.byteLength) throw new Error('no audio data');
           return result;
         } catch (err) {
-          errors.push(provider.name + ': ' + (err && err.message ? err.message : err));
+          errors.push(provider.name + ': ' + (err && err.message ? err.message : String(err)));
         }
       }
       throw new Error('All TTS providers failed — ' + errors.join(' | '));
@@ -170,7 +209,6 @@
       dialer = event.source;
       dialerOrigin = event.origin === 'null' ? '*' : event.origin;
       ensurePeer().then(() => start(m.request)).catch((err) => {
-        caption('Could not start voice link.');
         console.error(err);
       });
       return;
@@ -247,7 +285,6 @@
     stopVoiceGraph();
     send({ kind: 'stop' });
   }
-  function caption(text) { send({ kind: 'caption', text }); }
 
   /* ---------------- Weather ---------------- */
   const CODES = {
@@ -290,37 +327,38 @@
     return lines.join(' ');
   }
 
-  /* ---------------- The call ---------------- */
+  /* ---------------- The call (voice only — no status text) ---------------- */
   let state = 'entry';
   let zip = '';
 
   const spaced = (s) => s.split('').join(' ');
-  function showZip() { caption('Zip code\n' + spaced(zip.padEnd(ZIP_LENGTH, '_'))); }
 
   function promptZip(welcome) {
-    state = 'entry'; zip = ''; showZip();
-    speak((welcome ? 'Welcome to ToneCOM Weather. ' : '') + 'Using the keypad, enter your five digit zip code.');
+    state = 'entry';
+    zip = '';
+    const intro = welcome
+      ? 'Welcome to ToneCOM Weather. Please input zip code. Using the keypad, enter your five digit zip code.'
+      : 'Please input zip code. Enter your five digit zip code.';
+    speak(intro);
   }
 
   async function lookup() {
     state = 'lookup';
-    const ack = speak(`Looking up the weather for zip code ${spaced(zip)}.`);
+    const ack = speak('Looking up the weather for zip code ' + spaced(zip) + '.');
     let outcome;
     try { outcome = { text: await fetchReport(zip) }; }
     catch (err) { outcome = { err }; }
     await ack;
     if (outcome.text) {
       state = 'report';
-      // Status only — the spoken report is audio over WebRTC, not this caption text as voice.
-      caption('Playing weather report…');
       speak(outcome.text + ' To check another zip code, press any key. To hang up, end the call.');
     } else if (outcome.err && outcome.err.code === 'notfound') {
       const bad = zip;
-      state = 'entry'; zip = ''; showZip();
-      speak(`Sorry, I could not find zip code ${spaced(bad)}. Please enter another five digit zip code.`);
+      state = 'entry';
+      zip = '';
+      speak('Sorry, I could not find zip code ' + spaced(bad) + '. Please input zip code. Enter another five digit zip code.');
     } else {
       state = 'report';
-      caption('Weather service unreachable.');
       speak('Sorry, the weather service is not reachable right now. Press any key to try again.');
     }
   }
@@ -329,13 +367,15 @@
     if (state === 'lookup') return;
     silence();
     if (state === 'report') {
-      state = 'entry'; zip = '';
+      state = 'entry';
+      zip = '';
       if (!/^\d$/.test(key)) { promptZip(false); return; }
     }
     if (key === '*') { promptZip(false); return; }
     if (key === '#') { promptZip(false); return; }
     if (/^\d$/.test(key) && zip.length < ZIP_LENGTH) {
-      zip += key; showZip();
+      zip += key;
+      // Optional brief digit confirmation would be noisy; stay silent until 5 digits.
       if (zip.length === ZIP_LENGTH) lookup();
     }
   }
