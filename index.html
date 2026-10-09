@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<title>ToneCOM — Audio Communication</title>
+<style>
+:root{color-scheme:dark;--bg:#080c18;--panel:#10172a;--panel-2:#141d34;--line:#27324b;--ink:#f0f4ff;--muted:#929eb8;--accent:#78e5d3;--accent-2:#54b9ff;--danger:#ff6c83;--good:#79e0b0;--shadow:0 26px 90px #0007}
+*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#1a3150 0,transparent 48%),linear-gradient(160deg,#0a1020,#080c18 62%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;justify-content:center;padding:36px 18px 70px}button,input{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.app{width:min(100%,472px)}.brand{text-align:center;margin:3px 0 25px}.brand h1{font-weight:760;font-size:31px;letter-spacing:-1.4px;margin:0}.brand h1 span{color:var(--accent)}.brand p{font-size:11px;letter-spacing:2.4px;color:#8291af;margin:7px 0 0;text-transform:uppercase}.phone-card{border:1px solid #273550;border-radius:30px;background:linear-gradient(180deg,#121a2cfa,#0e1525fa);padding:25px 23px 23px;box-shadow:var(--shadow);position:relative;overflow:hidden}.phone-card:before{content:"";position:absolute;width:260px;height:190px;border-radius:50%;background:#63dbc90b;filter:blur(5px);right:-90px;top:-80px;pointer-events:none}.display{position:relative;border:1px solid #26334c;background:#090f1d;border-radius:18px;padding:18px 17px 16px;min-height:132px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:21px}.display-label,.display-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#8493ae;font-size:10px;letter-spacing:1.5px;text-transform:uppercase}.live-dot{height:6px;width:6px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:6px;box-shadow:0 0 11px #78e5d388}.inferred{color:var(--accent);margin-right:7px;font-weight:650;flex:none}.number-output{font-size:clamp(18px,4.4vw,24px);letter-spacing:.35px;line-height:1.55;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-height:39px;margin:12px 0 13px}.number-placeholder{color:#596780;font-size:16px;letter-spacing:0}.display-foot{font-size:10px;letter-spacing:.4px;text-transform:none}.display-foot .count{font-variant-numeric:tabular-nums}.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.key{height:65px;border:1px solid #2a3650;border-radius:17px;background:linear-gradient(150deg,#1b2640,#141c30);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;transition:transform .12s,border-color .12s,background .12s;box-shadow:inset 0 1px #ffffff08}.key:hover{border-color:#516582;background:linear-gradient(150deg,#222f4a,#19243b)}.key:active{transform:scale(.97)}.key .digit{font-size:24px;font-weight:540;line-height:1.12}.key .letters{font-size:9px;letter-spacing:2.2px;color:#8491ab;min-height:11px}.key.utility .digit{font-size:19px}.key.utility .letters{letter-spacing:.4px;font-size:9px}.actions{display:grid;grid-template-columns:1fr 58px;gap:10px;margin-top:17px}.call-button,.backspace{height:57px;border:0;border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:690}.call-button{background:linear-gradient(100deg,#83ead4,#62cdd6);color:#08201f;box-shadow:0 8px 28px #57daca20}.call-button:hover{filter:brightness(1.06)}.call-button:disabled{opacity:.34;cursor:not-allowed;filter:none;box-shadow:none}.backspace{background:#192239;border:1px solid #2d3a56;color:#c1cee5}.backspace:hover{border-color:#647692}.privacy-note{text-align:center;color:#6d7c99;font-size:10px;line-height:1.5;margin:15px 9px 0}.privacy-note strong{color:#9caaca;font-weight:550}.call-view{position:fixed;z-index:20;inset:0;background:#050914f2;backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto}.call-view[hidden]{display:none}.call-sheet{width:min(100%,430px);border:1px solid #2b3b54;border-radius:28px;background:linear-gradient(180deg,#131d31,#0c1221);box-shadow:0 30px 120px #000a;padding:25px 23px 24px;position:relative;max-height:calc(100vh - 36px);overflow-y:auto}.call-topline{display:flex;align-items:center;justify-content:space-between;color:#91a0bb;text-transform:uppercase;font-size:10px;letter-spacing:1.7px}.secure-chip{border:1px solid #34564f;color:#8fe2bd;border-radius:20px;padding:6px 9px;letter-spacing:.8px}.call-suffix{text-align:center;font-weight:700;letter-spacing:-1px;font-size:32px;margin:29px 0 3px}.call-host{text-align:center;color:#a5b2cb;font-size:13px;overflow-wrap:anywhere}.call-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-control{border:1px solid #2c3954;border-radius:18px;background:#19243a;min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#c8d4e9;font-size:11px}.call-control svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.call-control[aria-pressed="true"]{background:#283854;border-color:#78e5d3;color:var(--accent)}.call-control:hover{border-color:#7185a5}.call-control.end{grid-column:1/-1;min-height:54px;flex-direction:row;background:#8d2941;border-color:#a63a51;color:#fff;font-size:13px;font-weight:700}.call-control.end:hover{background:#a8314b}.call-control.end svg{transform:rotate(135deg);width:19px}.inline-keypad{margin-top:20px;border-top:1px solid #28344a;padding-top:19px}.inline-keypad[hidden]{display:none}.inline-keypad-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:12px;color:#aab7cf}.close-keypad{background:#202b42;border:1px solid #35445e;border-radius:50%;width:31px;height:31px;font-size:20px;line-height:1;color:#dce6f7}.tone-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tone-key{height:49px;border:1px solid #293754;border-radius:13px;background:#172239;display:flex;align-items:center;justify-content:center;font-size:19px;color:#e5ecfa}.tone-key:hover{background:#24334f;border-color:#7189aa}.tone-key small{display:block;font-size:8px;letter-spacing:1.4px;color:#8291ac;margin-left:7px}.toast{position:fixed;z-index:40;left:50%;bottom:22px;transform:translate(-50%,14px);padding:11px 15px;background:#202b40;border:1px solid #3a4a65;border-radius:12px;max-width:min(90vw,520px);font-size:12px;color:#e1eaff;box-shadow:0 10px 40px #0007;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}.toast.show{opacity:1;transform:translate(-50%,0)}.hidden-sandbox{position:absolute;width:0;height:0;border:0;left:-9999px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:420px){body{padding:19px 12px 38px}.phone-card{padding:18px 16px;border-radius:24px}.key{height:60px}.brand{margin-bottom:18px}.brand h1{font-size:29px}.display{min-height:126px;padding:15px}.call-sheet{padding:22px 17px}.call-suffix{font-size:28px}}
+
+/* Compact, responsive dialer refresh */
+body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));align-items:flex-start}
+.app{width:min(100%,430px)}
+.brand{margin:3px 0 18px}
+.brand h1{font-size:clamp(29px,7vw,34px);letter-spacing:-1.5px}
+.phone-card{padding:clamp(14px,4vw,20px);border-radius:26px}
+.address-entry{position:relative;display:flex;align-items:center;gap:10px;min-height:72px;padding:10px 15px;margin:0 0 17px;border:1px solid #2b3a55;border-radius:17px;background:#090f1d;transition:border-color .15s,box-shadow .15s}
+.address-entry:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px #78e5d314}
+.address-prefix{flex:none;color:var(--accent);font-size:clamp(21px,5vw,27px);font-weight:650;line-height:1}
+.number-input{width:100%;min-width:0;border:0;outline:0!important;background:transparent;color:var(--ink);font-size:clamp(16px,4vw,22px);line-height:1.45;letter-spacing:.2px;font-variant-numeric:tabular-nums;padding:7px 0;caret-color:var(--accent)}
+.number-input::placeholder{color:#65738c;opacity:1;font-size:clamp(14px,3.7vw,17px);letter-spacing:0}
+.keys{gap:9px}
+.key{height:clamp(54px,13vw,64px);border-radius:15px;min-width:0;touch-action:manipulation}
+.key .digit{font-size:23px}
+.key .letters{letter-spacing:1.8px}
+.actions{grid-template-columns:minmax(0,1fr);gap:0;margin-top:14px}
+.call-button{width:100%;min-height:54px;border-radius:15px;touch-action:manipulation}
+
+.call-view{padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.call-sheet{width:min(100%,410px);padding:clamp(18px,5vw,24px);border-radius:25px}
+.call-suffix{margin:22px 0 4px;font-size:clamp(27px,7vw,34px);overflow-wrap:anywhere}
+.call-host{font-size:12px}.call-caption{min-height:46px;margin:16px 4px 18px;text-align:center;color:#c9d5ec;font-size:13px;line-height:1.55;white-space:pre-line;overflow-wrap:anywhere}
+.call-controls{gap:9px;margin-top:28px}
+.call-control{min-height:72px;border-radius:16px;touch-action:manipulation}
+.call-control.end{min-height:54px}
+.tone-key{height:clamp(45px,12vw,52px);touch-action:manipulation}
+
+@media(max-width:360px){body{padding:12px 9px max(18px,env(safe-area-inset-bottom))}.phone-card{padding:12px;border-radius:21px}.keys{gap:7px}.key{height:54px;border-radius:12px}.key .letters{font-size:8px;letter-spacing:1.3px}.address-entry{padding:8px 11px;min-height:65px}.call-controls{gap:7px}.call-control{min-height:66px;font-size:10px}}
+@media(min-height:850px){body{align-items:center}}
+
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="brand"><h1>Tone<span>COM</span></h1></header>
+  <section class="phone-card" aria-label="ToneCOM dialer">
+    <div class="address-entry" aria-label="ToneCOM address">
+      <span class="address-prefix" aria-hidden="true">*</span>
+      <input id="addressInput" class="number-input" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="120" placeholder="Enter ToneCOM number" aria-label="ToneCOM number; the asterisk prefix is inferred">
+    </div>
+    <div class="keys" id="mainKeys" aria-label="Numeric keypad">
+      <button class="key" data-key="1"><span class="digit">1</span><span class="letters">&nbsp;</span></button>
+      <button class="key" data-key="2"><span class="digit">2</span><span class="letters">ABC</span></button>
+      <button class="key" data-key="3"><span class="digit">3</span><span class="letters">DEF</span></button>
+      <button class="key" data-key="4"><span class="digit">4</span><span class="letters">GHI</span></button>
+      <button class="key" data-key="5"><span class="digit">5</span><span class="letters">JKL</span></button>
+      <button class="key" data-key="6"><span class="digit">6</span><span class="letters">MNO</span></button>
+      <button class="key" data-key="7"><span class="digit">7</span><span class="letters">PQRS</span></button>
+      <button class="key" data-key="8"><span class="digit">8</span><span class="letters">TUV</span></button>
+      <button class="key" data-key="9"><span class="digit">9</span><span class="letters">WXYZ</span></button>
+      <button class="key utility" id="clearButton"><span class="digit">C</span><span class="letters">CLEAR</span></button>
+      <button class="key utility" data-key="0"><span class="digit">0</span><span class="letters">+</span></button>
+      <button class="key utility" id="backspaceButton" aria-label="Delete last digit"><span class="digit">⌫</span><span class="letters">DELETE</span></button>
+    </div>
+    <div class="actions">
+      <button class="call-button" id="callButton" disabled>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4.5c0-.8.7-1.5 1.5-1.5h2.3c.7 0 1.3.5 1.4 1.2l.6 3.1c.1.6-.1 1.2-.6 1.6l-1.5 1.2a14.2 14.2 0 0 0 6.2 6.2l1.2-1.5c.4-.5 1-.7 1.6-.6l3.1.6c.7.1 1.2.7 1.2 1.4v2.3c0 .8-.7 1.5-1.5 1.5h-1C10.7 21 3 13.3 3 4.5z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="callButtonText">Call</span>
+      </button>
+    </div>
+  </section>
+
+
+</main>
+
+<section class="call-view" id="callView" hidden aria-modal="true" role="dialog" aria-label="ToneCOM call controls">
+  <div class="call-sheet">
+    <div class="call-topline"><span>ToneCOM call</span><span class="secure-chip" id="transportChip">TLS</span></div>
+    <div class="call-suffix" id="callSuffix">.com</div>
+    <div class="call-host" id="callHost">voice.example.com</div>
+    <div class="call-caption" id="callCaption" aria-live="polite"></div>
+    <div class="call-controls">
+      <button class="call-control" id="muteButton" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg><span>Mute</span>
+      </button>
+      <button class="call-control" id="keypadButton" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="5" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="17" cy="5" r="1"></circle><circle cx="7" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="17" cy="12" r="1"></circle><circle cx="7" cy="19" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="17" cy="19" r="1"></circle></svg><span>Keypad</span>
+      </button>
+      <button class="call-control" id="holdButton" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg><span>Hold</span>
+      </button>
+      <button class="call-control end" id="endButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.7 14.1c4.9-4.3 11.7-4.3 16.6 0l-2.8 3.5-4-2-2.8 0-4 2z"></path></svg><span>End call</span></button>
+    </div>
+    <div class="inline-keypad" id="inlineKeypad" hidden>
+      <div class="inline-keypad-head"><span>Send DTMF tones</span><button class="close-keypad" id="closeKeypad" aria-label="Close keypad">×</button></div>
+      <div class="tone-keys" id="toneKeys">
+        <button class="tone-key" data-tone="1">1<small>&nbsp;</small></button><button class="tone-key" data-tone="2">2<small>ABC</small></button><button class="tone-key" data-tone="3">3<small>DEF</small></button>
+        <button class="tone-key" data-tone="4">4<small>GHI</small></button><button class="tone-key" data-tone="5">5<small>JKL</small></button><button class="tone-key" data-tone="6">6<small>MNO</small></button>
+        <button class="tone-key" data-tone="7">7<small>PQRS</small></button><button class="tone-key" data-tone="8">8<small>TUV</small></button><button class="tone-key" data-tone="9">9<small>WXYZ</small></button>
+        <button class="tone-key" data-tone="*">*<small>&nbsp;</small></button><button class="tone-key" data-tone="0">0<small>+</small></button><button class="tone-key" data-tone="#">#<small>&nbsp;</small></button>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const SUFFIXES = {
+    '01':'com','02':'net','03':'org','04':'io','05':'dev','06':'app','07':'edu','08':'gov',
+    '09':'co','10':'info','11':'me','12':'uk','13':'us','14':'co.uk',
+    '15':'ai','16':'ca','17':'de','18':'fr','19':'jp','20':'au','21':'nz','22':'in','23':'cn','24':'ru','25':'tv',
+    '26':'com.au','27':'net.au','28':'org.au','29':'co.nz','30':'co.jp','31':'co.in','32':'gov.uk','33':'ac.uk','34':'org.uk',
+    '35':'com.br','36':'com.mx','37':'com.sg','38':'com.my','39':'co.za','40':'fi','41':'dk','42':'pl','43':'be',
+    '44':'at','45':'ie','46':'kr','47':'sg','48':'my','49':'za','50':'id','51':'eu','52':'se','53':'no','54':'es',
+    '55':'it','56':'ch','57':'nl'
+  };
+  const TYPE_NAMES = {'1':'public domain','2':'public IPv4','3':'local IPv4','4':'local hostname'};
+  const MAX_DIGITS = 80;
+  let digits = '';
+  let active = null;
+  let toastTimer = null;
+  let toneContext = null;
+
+  function notify(message, duration=3400) {
+    const toast = $('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
+  function prettify(raw) {
+    if (!raw) return '';
+    if (raw.length <= 6) {
+      if (raw.length <= 3) return raw;
+      return raw.slice(0,3) + '-' + raw.slice(3);
+    }
+    const prefix = '(' + raw.slice(0,3) + '-' + raw.slice(3,6) + ')';
+    const payload = raw.slice(6).match(/.{1,4}/g)?.join('-') || '';
+    return prefix + (payload ? ' ' + payload : '');
+  }
+  function renderDigits() {
+    const input = $('addressInput');
+    const formatted = prettify(digits);
+    if (input.value !== formatted) input.value = formatted;
+    $('callButton').disabled = digits.length < 7;
+  }
+  function positionAfterDigits(formatted, count) {
+    if (count <= 0) return 0;
+    let seen = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/\d/.test(formatted[i]) && ++seen === count) return i + 1;
+    }
+    return formatted.length;
+  }
+  function handleAddressInput() {
+    const input = $('addressInput');
+    const original = input.value;
+    const oldCaret = input.selectionStart ?? original.length;
+    const digitCaret = (original.slice(0, oldCaret).match(/\d/g) || []).length;
+    const cleaned = original.replace(/\*/g, '').replace(/\D/g, '');
+    digits = cleaned.slice(0, MAX_DIGITS);
+    const formatted = prettify(digits);
+    input.value = formatted;
+    const caret = positionAfterDigits(formatted, Math.min(digitCaret, digits.length));
+    try { input.setSelectionRange(caret, caret); } catch {}
+    renderDigits();
+  }
+  function appendDigit(d) {
+    if (digits.length >= MAX_DIGITS) return notify(`Maximum length is ${MAX_DIGITS} digits.`);
+    digits += String(d); renderDigits();
+  }
+  function eraseDigit() { digits = digits.slice(0,-1); renderDigits(); }
+
+  const CHAR_TO_CODE = new Map();
+  const CODE_TO_CHAR = new Map();
+  for (let i=0;i<26;i++) { const ch=String.fromCharCode(97+i); CHAR_TO_CODE.set(ch,String(i+1).padStart(2,'0')); CODE_TO_CHAR.set(String(i+1).padStart(2,'0'),ch); }
+  for (let i=0;i<10;i++) { const ch=String(i); CHAR_TO_CODE.set(ch,String(i+27).padStart(2,'0')); CODE_TO_CHAR.set(String(i+27).padStart(2,'0'),ch); }
+  CHAR_TO_CODE.set('-', '37'); CODE_TO_CHAR.set('37','-'); CHAR_TO_CODE.set('.', '00'); CODE_TO_CHAR.set('00','.');
+  function encodeHostLabelPayload(hostPart) {
+    let out='';
+    for (const ch of hostPart.toLowerCase()) {
+      if (!CHAR_TO_CODE.has(ch)) throw new Error(`Cannot encode “${ch}”. Use ASCII letters, digits, hyphens and dots.`);
+      out += CHAR_TO_CODE.get(ch);
+    }
+    return out;
+  }
+  function decodeHostPayload(payload) {
+    if (!payload || payload.length % 2 !== 0) throw new Error('Domain/hostname payload must contain an even, non-zero number of digits.');
+    let out='';
+    for (let i=0;i<payload.length;i+=2) {
+      const code=payload.slice(i,i+2);
+      if (!CODE_TO_CHAR.has(code)) throw new Error(`Unknown hostname character code ${code}.`);
+      out += CODE_TO_CHAR.get(code);
+    }
+    if (out.startsWith('.') || out.endsWith('.') || out.includes('..')) throw new Error('Hostname has an empty label.');
+    const labels=out.split('.');
+    if (labels.some(l=>!l || l.length>63 || l.startsWith('-') || l.endsWith('-'))) throw new Error('Hostname contains an invalid label.');
+    return out;
+  }
+  function isIPv4(host) {
+    const p=host.split('.');
+    return p.length===4 && p.every(x=>/^\d{1,3}$/.test(x)&&Number(x)>=0&&Number(x)<=255);
+  }
+  function isPrivateIPv4(ip) {
+    if (!isIPv4(ip)) return false;
+    const a=ip.split('.').map(Number), [x,y]=a;
+    return x===10 || x===127 || x===0 || (x===172&&y>=16&&y<=31) || (x===192&&y===168) || (x===169&&y===254) || (x===100&&y>=64&&y<=127) || (x===198&&(y===18||y===19));
+  }
+  function knownSuffixForHost(host) {
+    const candidates=Object.entries(SUFFIXES).map(([code,suffix])=>({code,suffix})).sort((a,b)=>b.suffix.length-a.suffix.length);
+    return candidates.find(item=>host===item.suffix || host.endsWith('.'+item.suffix)) || null;
+  }
+  function parseAddress(raw) {
+    if (!/^\d+$/.test(raw)) throw new Error('ToneCOM addresses contain digits only.');
+    if (raw.length < 7) throw new Error('An address needs the 6-digit header plus a payload.');
+    const type=raw[0], suffixCode=raw.slice(1,3), options=raw.slice(3,6), payload=raw.slice(6);
+    if (!TYPE_NAMES[type]) throw new Error(`Destination type ${type} is reserved or unsupported.`);
+    let host, suffix='';
+    if (type==='1') {
+      const name=decodeHostPayload(payload);
+      if (suffixCode==='99') {
+        if (!name.includes('.')) throw new Error('Literal-suffix mode requires the complete hostname, including its ending.');
+        if (name.length>253 || !/^[a-z0-9.-]+$/.test(name)) throw new Error('Invalid domain name.');
+        const known=knownSuffixForHost(name);
+        if (known) throw new Error(`The ending .${known.suffix} has registered code ${known.code}; use that strict suffix code instead of 99.`);
+        host=name; suffix=name.split('.').at(-1);
+      } else {
+        if (!SUFFIXES[suffixCode]) throw new Error(`Unknown suffix code ${suffixCode}. Use 99 for an unlisted ending.`);
+        suffix=SUFFIXES[suffixCode];
+        if (name.endsWith('.'+suffix)) throw new Error(`Payload must exclude the .${suffix} suffix.`);
+        host = name + '.' + suffix;
+        if (host.length > 253 || !/^[a-z0-9.-]+$/.test(host)) throw new Error('Invalid domain name.');
+      }
+      if (isIPv4(host)) throw new Error('Use IPv4 destination type 2 or 3 for an IP address.');
+    } else if (type==='2' || type==='3') {
+      if (suffixCode!=='00') throw new Error('IPv4 destinations require suffix code 00.');
+      if (payload.length!==12) throw new Error('IPv4 payload must be exactly 12 digits: four 3-digit octets.');
+      const octets=payload.match(/.{3}/g).map(Number);
+      if (octets.some(n=>n>255)) throw new Error('An IPv4 octet cannot exceed 255.');
+      host=octets.join('.');
+      if (type==='3' && !isPrivateIPv4(host)) throw new Error('Type 3 is for local/private IPv4 addresses.');
+      if (type==='2' && (isPrivateIPv4(host) || host.startsWith('224.') || host.startsWith('255.'))) throw new Error('This is not a public unicast IPv4 address; use type 3 for a local address.');
+    } else {
+      if (suffixCode!=='00') throw new Error('Local hostnames require suffix code 00.');
+      host=decodeHostPayload(payload);
+      if (isIPv4(host) || host.includes('.') && !host.endsWith('.local') && !host.endsWith('.lan') && !host.endsWith('.home')) throw new Error('Type 4 is for local hostnames. Multi-label names should end in .local, .lan or .home.');
+    }
+    return {raw,type,typeName:TYPE_NAMES[type],suffixCode,suffix:suffix?'.'+suffix:'',options,payload,host,local:type==='3'||type==='4'};
+  }
+
+  function getBaseUrl(address, forceLocalHttp) {
+    const scheme = address.local && forceLocalHttp ? 'http:' : 'https:';
+    return `${scheme}//${address.host}`;
+  }
+  function updateControl(button, pressed, onText, offText) {
+    button.setAttribute('aria-pressed',String(pressed));
+    button.querySelector('span').textContent=pressed?onText:offText;
+    button.title=pressed?onText:offText;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Destination pages.
+  // A ToneCOM destination is a normal web page served at  <host>/.tonecom/index.html
+  // It is loaded in a hidden iframe with its real origin (sandbox="allow-scripts
+  // allow-same-origin"), so it behaves like any webpage: it can call its own server
+  // freely and other sites under ordinary browser rules. It cannot touch this dialer,
+  // navigate it, open popups, or use the microphone/camera. It talks to the dialer
+  // only through postMessage:
+  //
+  //   page -> dialer   {tonecom:1, kind:'ready', protocol:'ToneCOM', version:1}
+  //                    {kind:'audio', id, url}  or  {kind:'audio', id, data:ArrayBuffer, mime}
+  //                    {kind:'say', id, text}   browser text-to-speech
+  //                    {kind:'stop'}  {kind:'caption', text}  {kind:'keypad', open}  {kind:'end'}
+  //   dialer -> page   {tonecom:1, kind:'init', request:{host, suffix, type, ...}}
+  //                    {kind:'dtmf', key}  {kind:'state', muted, held}
+  //                    {kind:'done', id, ok, error}   when audio/say finishes
+  // ---------------------------------------------------------------------------
+  const ENTRY_PATH = '/.tonecom/index.html';
+  const MAX_CAPTION = 600;
+  const cleanId = (id) => (typeof id === 'number' || typeof id === 'string') ? id : null;
+
+  function toPage(msg) {
+    if (!active || !active.frame || !active.frame.contentWindow) return;
+    try { active.frame.contentWindow.postMessage({tonecom:1, ...msg}, active.origin); } catch {}
+  }
+  function setCaption(text) { $('callCaption').textContent = String(text || '').slice(0, MAX_CAPTION); }
+  function setKeypad(open) {
+    $('inlineKeypad').hidden = !open;
+    updateControl($('keypadButton'), open, 'Hide keypad', 'Keypad');
+  }
+
+  function stopOutput() {
+    if (!active) return;
+    const rec = active.audioEl;
+    if (rec) {
+      active.audioEl = null;
+      rec.finish(false, 'interrupted');
+      rec.audio.pause(); rec.audio.removeAttribute('src'); rec.audio.load();
+    }
+    const sp = active.speech;
+    if (sp) {
+      active.speech = null;
+      sp.finish(false, 'interrupted');
+      try { speechSynthesis.cancel(); } catch {}
+    }
+  }
+  function dropFrame() {
+    if (!active) return;
+    if (active.timer) { clearTimeout(active.timer); active.timer = null; }
+    if (active.frame) { active.frame.remove(); active.frame = null; }
+    active.ready = false;
+  }
+  function stopMedia() {
+    if (!active) return;
+    stopOutput();
+    dropFrame();
+  }
+  function clearActive() {
+    stopMedia();
+    active = null;
+    $('callView').hidden = true;
+    $('inlineKeypad').hidden = true;
+    setCaption('');
+    updateControl($('keypadButton'),false,'Hide keypad','Keypad');
+    updateControl($('muteButton'),false,'Muted','Mute');
+    updateControl($('holdButton'),false,'Resume','Hold');
+    renderDigits();
+  }
+
+  function playAudio(m) {
+    if (!active) return;
+    stopOutput();
+    const id = cleanId(m.id);
+    let src, objectUrl = null;
+    try {
+      if (m.data !== undefined) {
+        if (!(m.data instanceof ArrayBuffer) || m.data.byteLength > 20e6) throw new Error('Invalid audio data.');
+        const mime = /^audio\/[\w.+-]+$/.test(m.mime || '') ? m.mime : 'audio/mpeg';
+        objectUrl = URL.createObjectURL(new Blob([m.data], {type: mime}));
+        src = objectUrl;
+      } else {
+        const u = new URL(String(m.url));
+        const okScheme = u.protocol === 'https:' || (u.protocol === 'http:' && active.address.local);
+        if (!okScheme) throw new Error('Audio must be served over HTTPS.');
+        src = u.href;
+      }
+    } catch (err) { toPage({kind:'done', id, ok:false, error:String(err.message || err)}); return; }
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.muted = active.muted || active.held;
+    const rec = { audio, finished:false, finish(ok, error) {
+      if (rec.finished) return;
+      rec.finished = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (active && active.audioEl === rec) active.audioEl = null;
+      toPage({kind:'done', id, ok, error});
+    }};
+    active.audioEl = rec;
+    audio.onended = () => rec.finish(true);
+    audio.onerror = () => rec.finish(false, 'Could not play audio.');
+    audio.src = src;
+    if (!active.held) audio.play().catch(err => rec.finish(false, String(err.message || err)));
+  }
+
+  function speak(m) {
+    if (!active) return;
+    stopOutput();
+    const id = cleanId(m.id);
+    if (!('speechSynthesis' in window)) { toPage({kind:'done', id, ok:false, error:'This browser has no text-to-speech.'}); return; }
+    const utterance = new SpeechSynthesisUtterance(String(m.text || '').slice(0, 6000));
+    utterance.volume = active.muted ? 0 : 1;
+    const rec = { finished:false, finish(ok, error) {
+      if (rec.finished) return;
+      rec.finished = true;
+      if (active && active.speech === rec) active.speech = null;
+      toPage({kind:'done', id, ok, error});
+    }};
+    utterance.onend = () => rec.finish(true);
+    utterance.onerror = (e) => rec.finish(false, (e && e.error) || 'Speech failed.');
+    active.speech = rec;
+    try { speechSynthesis.speak(utterance); if (active.held) speechSynthesis.pause(); }
+    catch (err) { rec.finish(false, String(err.message || err)); }
+  }
+
+  function onPageMessage(event) {
+    if (!active || !active.frame || event.source !== active.frame.contentWindow) return;
+    if (event.origin !== active.origin) return;          // ignore anything that is not the dialed site
+    const m = event.data;
+    if (!m || typeof m !== 'object' || m.tonecom !== 1) return;
+    if (!active.ready) {
+      if (m.kind !== 'ready') return;
+      if (m.protocol !== 'ToneCOM' || m.version !== 1) {
+        if (active.onFail) active.onFail(new Error('The page at /.tonecom/ does not speak ToneCOM version 1.'));
+        return;
+      }
+      active.ready = true;
+      if (active.timer) { clearTimeout(active.timer); active.timer = null; }
+      const a = active.address;
+      toPage({kind:'init', request:{protocol:'ToneCOM',version:1,host:a.host,suffix:a.suffix,suffixCode:a.suffixCode,type:a.type,typeName:a.typeName,options:a.options}});
+      if (active.onReady) active.onReady();
+      return;
+    }
+    switch (m.kind) {
+      case 'audio':   playAudio(m); break;
+      case 'say':     speak(m); break;
+      case 'stop':    stopOutput(); break;
+      case 'caption': setCaption(m.text); break;
+      case 'keypad':  setKeypad(m.open !== false); break;
+      case 'end':     notify('Destination ended the session.'); clearActive(); break;
+    }
+  }
+  window.addEventListener('message', onPageMessage);
+
+  function connectPage(baseUrl, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const call = active;
+      if (!call) return reject(new Error('Call ended.'));
+      const origin = new URL(baseUrl).origin;
+      if (origin === window.location.origin) return reject(new Error('A destination cannot be hosted on the dialer\u2019s own origin.'));
+      dropFrame();
+      const frame = document.createElement('iframe');
+      frame.className = 'hidden-sandbox';
+      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      frame.setAttribute('referrerpolicy', 'no-referrer');
+      frame.setAttribute('aria-hidden', 'true');
+      frame.tabIndex = -1;
+      call.frame = frame; call.origin = origin; call.ready = false;
+      call.onReady = () => resolve();
+      call.onFail = (err) => { dropFrame(); reject(err); };
+      call.timer = setTimeout(() => {
+        if (active !== call || call.ready) return;
+        dropFrame();
+        reject(new Error(`Nothing answered at ${baseUrl}${ENTRY_PATH}. The site needs a ToneCOM page there, and it must allow being framed.`));
+      }, timeoutMs);
+      frame.src = baseUrl + ENTRY_PATH;
+      document.body.appendChild(frame);
+    });
+  }
+
+  async function startCall() {
+    if (active) return;
+    let address;
+    try { address = parseAddress(digits); }
+    catch (err) { notify(err.message, 4800); return; }
+    let baseUrl = getBaseUrl(address, false);
+    active = {address, baseUrl, origin:null, frame:null, ready:false, timer:null, muted:false, held:false, audioEl:null, speech:null};
+    $('callView').hidden = false;
+    $('callSuffix').textContent = address.suffix || (address.type==='2' ? 'IPv4' : address.type==='3' ? 'Local IPv4' : 'Local host');
+    $('callHost').textContent = address.host;
+    $('transportChip').textContent = baseUrl.startsWith('https:') ? 'HTTPS' : 'HTTP \u00b7 INSECURE';
+    setCaption('Connecting\u2026');
+    setKeypad(false);
+    updateControl($('muteButton'),false,'Muted','Mute'); updateControl($('holdButton'),false,'Resume','Hold');
+    const call = active;
+    try {
+      try { await connectPage(baseUrl, 7000); }
+      catch (err) {
+        if (active === call && address.local && confirm(`Could not reach ${baseUrl}${ENTRY_PATH} over HTTPS. Retry this local destination using unencrypted HTTP? This is less secure.`)) {
+          baseUrl = getBaseUrl(address, true);
+          call.baseUrl = baseUrl;
+          $('transportChip').textContent = 'HTTP \u00b7 INSECURE';
+          await connectPage(baseUrl, 7000);
+        } else throw err;
+      }
+      if (active === call) setCaption('');
+    } catch (err) {
+      console.error('ToneCOM connection error:', err);
+      if (active === call) { notify(String(err.message || err), 5600); clearActive(); }
+    }
+  }
+
+  function pressTone(key) {
+    playDtmf(key);
+    if (active && active.ready) toPage({kind:'dtmf', key});
+  }
+
+  function toneFrequencies(key) {
+    const map={
+      '1':[697,1209],'2':[697,1336],'3':[697,1477],
+      '4':[770,1209],'5':[770,1336],'6':[770,1477],
+      '7':[852,1209],'8':[852,1336],'9':[852,1477],
+      '*':[941,1209],'0':[941,1336],'#':[941,1477]
+    };
+    return map[key];
+  }
+  function playDtmf(key) {
+    const freqs=toneFrequencies(key); if(!freqs) return;
+    try {
+      toneContext ||= new (window.AudioContext||window.webkitAudioContext)();
+      if(toneContext.state==='suspended') toneContext.resume();
+      const now=toneContext.currentTime, gain=toneContext.createGain();
+      gain.gain.setValueAtTime(0.0001,now); gain.gain.exponentialRampToValueAtTime(0.16,now+0.012); gain.gain.setValueAtTime(0.16,now+0.085); gain.gain.exponentialRampToValueAtTime(0.0001,now+0.11); gain.connect(toneContext.destination);
+      const oscillators=freqs.map(freq=>{const o=toneContext.createOscillator();o.type='sine';o.frequency.value=freq;o.connect(gain);o.start(now);o.stop(now+0.115);return o;});
+    } catch(err) { console.warn('DTMF playback unavailable',err); }
+  }
+
+  $('addressInput').addEventListener('input',handleAddressInput);
+  $('addressInput').addEventListener('paste',()=>{ /* native paste feeds the normal input handler */ });
+  $('mainKeys').addEventListener('click',event=>{const button=event.target.closest('[data-key]');if(button)appendDigit(button.dataset.key);});
+  $('clearButton').addEventListener('click',()=>{digits='';renderDigits();});
+  $('backspaceButton').addEventListener('click',eraseDigit);
+  $('callButton').addEventListener('click',startCall);
+  $('endButton').addEventListener('click',()=>{clearActive();notify('Call ended.',1800);});
+  $('keypadButton').addEventListener('click',()=>{const open=$('inlineKeypad').hidden===false;$('inlineKeypad').hidden=open;updateControl($('keypadButton'),!open,'Hide keypad','Keypad');});
+  $('closeKeypad').addEventListener('click',()=>{$('inlineKeypad').hidden=true;updateControl($('keypadButton'),false,'Hide keypad','Keypad');});
+  $('toneKeys').addEventListener('click',event=>{const btn=event.target.closest('[data-tone]');if(btn)pressTone(btn.dataset.tone);});
+  $('muteButton').addEventListener('click',()=>{
+    if(!active)return;active.muted=!active.muted;
+    if(active.audioEl)active.audioEl.audio.muted=active.muted||active.held;
+    if(active.muted&&active.speech){try{speechSynthesis.cancel();}catch{}}
+    updateControl($('muteButton'),active.muted,'Muted','Mute');
+    toPage({kind:'state',muted:active.muted,held:active.held});
+  });
+  $('holdButton').addEventListener('click',()=>{
+    if(!active)return;active.held=!active.held;
+    if(active.audioEl){const a=active.audioEl.audio;a.muted=active.muted||active.held;if(active.held)a.pause();else a.play().catch(()=>{});}
+    if(active.held&&active.speech){try{speechSynthesis.pause();}catch{}}
+    if(!active.held&&active.speech){try{speechSynthesis.resume();}catch{}}
+    updateControl($('holdButton'),active.held,'Resume','Hold');
+    toPage({kind:'state',muted:active.muted,held:active.held});
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.ctrlKey||event.metaKey||event.altKey)return;
+    if(!$('callView').hidden) {
+      if(event.key==='Escape'){if(!$('inlineKeypad').hidden){$('inlineKeypad').hidden=true;updateControl($('keypadButton'),false,'Hide keypad','Keypad');}else clearActive();event.preventDefault();return;}
+      if('0123456789*#'.includes(event.key)&&event.key.length===1){pressTone(event.key);event.preventDefault();return;}
+      return;
+    }
+    if(event.target === $('addressInput')) {
+      if(event.key==='Enter'&&!$('callButton').disabled){startCall();event.preventDefault();}
+      return;
+    }
+    if(/^[0-9]$/.test(event.key)){appendDigit(event.key);event.preventDefault();}
+    else if(event.key==='Backspace'){eraseDigit();event.preventDefault();}
+    else if(event.key==='Escape'){digits='';renderDigits();}
+    else if(event.key==='Enter'&&!$('callButton').disabled){startCall();event.preventDefault();}
+  });
+  renderDigits();
+})();
+</script>
+</body>
+</html>
