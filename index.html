@@ -40,6 +40,85 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
 @media(max-width:360px){body{padding:12px 9px max(18px,env(safe-area-inset-bottom))}.phone-card{padding:12px;border-radius:21px}.keys{gap:7px}.key{height:54px;border-radius:12px}.key .letters{font-size:8px;letter-spacing:1.3px}.address-entry{padding:8px 11px;min-height:65px}.call-controls{gap:7px}.call-control{min-height:66px;font-size:10px}}
 @media(min-height:850px){body{align-items:center}}
 
+
+/* In-call keypad: replaces control buttons in-place, no overflow scroll */
+.controls-stage{position:relative;margin-top:22px}
+.controls-stage .call-controls{margin-top:0}
+.controls-stage.keypad-open .call-controls{visibility:hidden;pointer-events:none}
+.inline-keypad{
+  position:absolute;inset:0;z-index:6;
+  display:flex;flex-direction:column;
+  background:linear-gradient(165deg,#152038 0%,#0e1628 100%);
+  border:1px solid #2f3f5c;
+  border-radius:20px;
+  padding:10px;
+  box-shadow:inset 0 1px #ffffff0a, 0 18px 50px #0008;
+}
+.inline-keypad[hidden]{display:none!important}
+.tone-keys{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  grid-template-rows:repeat(4,minmax(0,1fr));
+  gap:8px;
+  height:100%;
+  min-height:0;
+}
+.tone-key{
+  grid-column:span 2;
+  height:100%;
+  min-height:0;
+  border:1px solid #2a3a56;
+  border-radius:14px;
+  background:linear-gradient(160deg,#1c2a44,#141e34);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  color:#eef3ff;font-size:clamp(17px,4.6vw,21px);font-weight:560;
+  box-shadow:inset 0 1px #ffffff0c, 0 1px 0 #0004;
+  transition:transform .1s,border-color .12s,background .12s,filter .12s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.tone-key:hover{border-color:#5d789c;background:linear-gradient(160deg,#243552,#192640)}
+.tone-key:active{transform:scale(.96);filter:brightness(1.08)}
+.tone-key small{
+  display:block;font-size:clamp(7px,1.9vw,9px);letter-spacing:1.6px;
+  color:#7f8eaa;font-weight:500;line-height:1;margin:0;
+}
+.tone-key.half{grid-column:span 1;font-size:clamp(16px,4.2vw,19px)}
+.tone-key.close-key{
+  grid-column:span 2;
+  background:linear-gradient(160deg,#24314a,#1a243a);
+  border-color:#3a4c6a;color:#c8d6ef;font-size:clamp(20px,5vw,24px);font-weight:600;
+}
+.tone-key.close-key:hover{border-color:#6a82a6;background:linear-gradient(160deg,#2c3c58,#202c46)}
+.tone-key.close-key:active{transform:scale(.96)}
+
+/* When keypad is open, expand stage so the 4-row pad fits without sheet scroll */
+.controls-stage.keypad-open{
+  min-height:min(292px,42vh);
+}
+.controls-stage.keypad-open .inline-keypad{
+  /* fill the expanded stage; keys stay fully visible */
+}
+@media(max-width:360px){
+  .controls-stage.keypad-open{min-height:min(260px,44vh)}
+  .tone-keys{gap:6px}
+  .tone-key{border-radius:12px}
+}
+@media(max-height:640px){
+  .controls-stage.keypad-open{min-height:min(230px,36vh)}
+  .call-caption{min-height:24px;margin:8px 4px 10px;font-size:12px}
+  .call-suffix{margin:12px 0 2px;font-size:clamp(22px,6vw,28px)}
+  .call-sheet{padding:clamp(14px,3vw,18px);max-height:calc(100dvh - 16px)}
+}
+@media(max-height:520px){
+  .controls-stage.keypad-open{min-height:min(200px,34vh)}
+  .call-caption{display:none}
+  .call-host{font-size:11px}
+}
+/* Prefer dynamic viewport to avoid mobile browser chrome forcing scroll */
+.call-view{padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));overflow:auto}
+.call-sheet{max-height:calc(100dvh - 20px);overflow-y:auto}
+.controls-stage.keypad-open .inline-keypad{overflow:hidden}
+
 </style>
 </head>
 <body>
@@ -81,25 +160,35 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     <div class="call-suffix" id="callSuffix">.com</div>
     <div class="call-host" id="callHost">voice.example.com</div>
     <div class="call-caption" id="callCaption" aria-live="polite"></div>
-    <div class="call-controls">
-      <button class="call-control" id="muteButton" aria-pressed="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg><span>Mute</span>
-      </button>
-      <button class="call-control" id="keypadButton" aria-pressed="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="5" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="17" cy="5" r="1"></circle><circle cx="7" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="17" cy="12" r="1"></circle><circle cx="7" cy="19" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="17" cy="19" r="1"></circle></svg><span>Keypad</span>
-      </button>
-      <button class="call-control" id="holdButton" aria-pressed="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg><span>Hold</span>
-      </button>
-      <button class="call-control end" id="endButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.7 14.1c4.9-4.3 11.7-4.3 16.6 0l-2.8 3.5-4-2-2.8 0-4 2z"></path></svg><span>End call</span></button>
-    </div>
-    <div class="inline-keypad" id="inlineKeypad" hidden>
-      <div class="inline-keypad-head"><span>Send DTMF tones</span><button class="close-keypad" id="closeKeypad" aria-label="Close keypad">×</button></div>
-      <div class="tone-keys" id="toneKeys">
-        <button class="tone-key" data-tone="1">1<small>&nbsp;</small></button><button class="tone-key" data-tone="2">2<small>ABC</small></button><button class="tone-key" data-tone="3">3<small>DEF</small></button>
-        <button class="tone-key" data-tone="4">4<small>GHI</small></button><button class="tone-key" data-tone="5">5<small>JKL</small></button><button class="tone-key" data-tone="6">6<small>MNO</small></button>
-        <button class="tone-key" data-tone="7">7<small>PQRS</small></button><button class="tone-key" data-tone="8">8<small>TUV</small></button><button class="tone-key" data-tone="9">9<small>WXYZ</small></button>
-        <button class="tone-key" data-tone="*">*<small>&nbsp;</small></button><button class="tone-key" data-tone="0">0<small>+</small></button><button class="tone-key" data-tone="#">#<small>&nbsp;</small></button>
+    <div class="controls-stage">
+      <div class="call-controls">
+        <button class="call-control" id="muteButton" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg><span>Mute</span>
+        </button>
+        <button class="call-control" id="keypadButton" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="5" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="17" cy="5" r="1"></circle><circle cx="7" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="17" cy="12" r="1"></circle><circle cx="7" cy="19" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="17" cy="19" r="1"></circle></svg><span>Keypad</span>
+        </button>
+        <button class="call-control" id="holdButton" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg><span>Hold</span>
+        </button>
+        <button class="call-control end" id="endButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.7 14.1c4.9-4.3 11.7-4.3 16.6 0l-2.8 3.5-4-2-2.8 0-4 2z"></path></svg><span>End call</span></button>
+      </div>
+      <div class="inline-keypad" id="inlineKeypad" hidden>
+        <div class="tone-keys" id="toneKeys">
+          <button class="tone-key" data-tone="1">1<small>&nbsp;</small></button>
+          <button class="tone-key" data-tone="2">2<small>ABC</small></button>
+          <button class="tone-key" data-tone="3">3<small>DEF</small></button>
+          <button class="tone-key" data-tone="4">4<small>GHI</small></button>
+          <button class="tone-key" data-tone="5">5<small>JKL</small></button>
+          <button class="tone-key" data-tone="6">6<small>MNO</small></button>
+          <button class="tone-key" data-tone="7">7<small>PQRS</small></button>
+          <button class="tone-key" data-tone="8">8<small>TUV</small></button>
+          <button class="tone-key" data-tone="9">9<small>WXYZ</small></button>
+          <button class="tone-key half" data-tone="*">*<small>&nbsp;</small></button>
+          <button class="tone-key" data-tone="0">0<small>+</small></button>
+          <button class="tone-key half" data-tone="#">#<small>&nbsp;</small></button>
+          <button class="tone-key close-key" id="closeKeypad" aria-label="Close keypad">×</button>
+        </div>
       </div>
     </div>
   </div>
@@ -264,21 +353,25 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   }
 
   // ---------------------------------------------------------------------------
-  // Destination pages.
+  // Destination pages — pure voice system.
   // A ToneCOM destination is a normal web page served at  <host>/.tonecom/index.html
   // It is loaded in a hidden iframe with its real origin (sandbox="allow-scripts
   // allow-same-origin"), so it behaves like any webpage: it can call its own server
   // freely and other sites under ordinary browser rules. It cannot touch this dialer,
   // navigate it, open popups, or use the microphone/camera. It talks to the dialer
-  // only through postMessage:
+  // only through postMessage.
+  //
+  // The dialer is a SPEAKER ONLY: it never synthesizes speech itself. Destinations
+  // send ready-to-play audio (URL or ArrayBuffer). That works from a static page —
+  // no media server, no WebRTC signaling server required. Audio travels over the
+  // existing postMessage channel (or an https URL the dialer can fetch).
   //
   //   page -> dialer   {tonecom:1, kind:'ready', protocol:'ToneCOM', version:1}
   //                    {kind:'audio', id, url}  or  {kind:'audio', id, data:ArrayBuffer, mime}
-  //                    {kind:'say', id, text}   browser text-to-speech
   //                    {kind:'stop'}  {kind:'caption', text}  {kind:'keypad', open}  {kind:'end'}
   //   dialer -> page   {tonecom:1, kind:'init', request:{host, suffix, type, ...}}
   //                    {kind:'dtmf', key}  {kind:'state', muted, held}
-  //                    {kind:'done', id, ok, error}   when audio/say finishes
+  //                    {kind:'done', id, ok, error}   when audio finishes (or fails)
   // ---------------------------------------------------------------------------
   const ENTRY_PATH = '/.tonecom/index.html';
   const MAX_CAPTION = 600;
@@ -291,6 +384,8 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   function setCaption(text) { $('callCaption').textContent = String(text || '').slice(0, MAX_CAPTION); }
   function setKeypad(open) {
     $('inlineKeypad').hidden = !open;
+    const stage = document.querySelector('.controls-stage');
+    if (stage) stage.classList.toggle('keypad-open', open);
     updateControl($('keypadButton'), open, 'Hide keypad', 'Keypad');
   }
 
@@ -301,12 +396,6 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
       active.audioEl = null;
       rec.finish(false, 'interrupted');
       rec.audio.pause(); rec.audio.removeAttribute('src'); rec.audio.load();
-    }
-    const sp = active.speech;
-    if (sp) {
-      active.speech = null;
-      sp.finish(false, 'interrupted');
-      try { speechSynthesis.cancel(); } catch {}
     }
   }
   function dropFrame() {
@@ -324,9 +413,8 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     stopMedia();
     active = null;
     $('callView').hidden = true;
-    $('inlineKeypad').hidden = true;
+    setKeypad(false);
     setCaption('');
-    updateControl($('keypadButton'),false,'Hide keypad','Keypad');
     updateControl($('muteButton'),false,'Muted','Mute');
     updateControl($('holdButton'),false,'Resume','Hold');
     renderDigits();
@@ -367,26 +455,6 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     if (!active.held) audio.play().catch(err => rec.finish(false, String(err.message || err)));
   }
 
-  function speak(m) {
-    if (!active) return;
-    stopOutput();
-    const id = cleanId(m.id);
-    if (!('speechSynthesis' in window)) { toPage({kind:'done', id, ok:false, error:'This browser has no text-to-speech.'}); return; }
-    const utterance = new SpeechSynthesisUtterance(String(m.text || '').slice(0, 6000));
-    utterance.volume = active.muted ? 0 : 1;
-    const rec = { finished:false, finish(ok, error) {
-      if (rec.finished) return;
-      rec.finished = true;
-      if (active && active.speech === rec) active.speech = null;
-      toPage({kind:'done', id, ok, error});
-    }};
-    utterance.onend = () => rec.finish(true);
-    utterance.onerror = (e) => rec.finish(false, (e && e.error) || 'Speech failed.');
-    active.speech = rec;
-    try { speechSynthesis.speak(utterance); if (active.held) speechSynthesis.pause(); }
-    catch (err) { rec.finish(false, String(err.message || err)); }
-  }
-
   function onPageMessage(event) {
     if (!active || !active.frame || event.source !== active.frame.contentWindow) return;
     if (event.origin !== active.origin) return;          // ignore anything that is not the dialed site
@@ -407,7 +475,6 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     }
     switch (m.kind) {
       case 'audio':   playAudio(m); break;
-      case 'say':     speak(m); break;
       case 'stop':    stopOutput(); break;
       case 'caption': setCaption(m.text); break;
       case 'keypad':  setKeypad(m.open !== false); break;
@@ -448,7 +515,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     try { address = parseAddress(digits); }
     catch (err) { notify(err.message, 4800); return; }
     let baseUrl = getBaseUrl(address, false);
-    active = {address, baseUrl, origin:null, frame:null, ready:false, timer:null, muted:false, held:false, audioEl:null, speech:null};
+    active = {address, baseUrl, origin:null, frame:null, ready:false, timer:null, muted:false, held:false, audioEl:null};
     $('callView').hidden = false;
     $('callSuffix').textContent = address.suffix || (address.type==='2' ? 'IPv4' : address.type==='3' ? 'Local IPv4' : 'Local host');
     $('callHost').textContent = address.host;
@@ -506,28 +573,29 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   $('backspaceButton').addEventListener('click',eraseDigit);
   $('callButton').addEventListener('click',startCall);
   $('endButton').addEventListener('click',()=>{clearActive();notify('Call ended.',1800);});
-  $('keypadButton').addEventListener('click',()=>{const open=$('inlineKeypad').hidden===false;$('inlineKeypad').hidden=open;updateControl($('keypadButton'),!open,'Hide keypad','Keypad');});
-  $('closeKeypad').addEventListener('click',()=>{$('inlineKeypad').hidden=true;updateControl($('keypadButton'),false,'Hide keypad','Keypad');});
-  $('toneKeys').addEventListener('click',event=>{const btn=event.target.closest('[data-tone]');if(btn)pressTone(btn.dataset.tone);});
+  $('keypadButton').addEventListener('click',()=>{setKeypad($('inlineKeypad').hidden);});
+  $('closeKeypad').addEventListener('click',()=>setKeypad(false));
+  $('toneKeys').addEventListener('click',event=>{
+    if(event.target.closest('#closeKeypad'))return;
+    const btn=event.target.closest('[data-tone]');
+    if(btn)pressTone(btn.dataset.tone);
+  });
   $('muteButton').addEventListener('click',()=>{
     if(!active)return;active.muted=!active.muted;
     if(active.audioEl)active.audioEl.audio.muted=active.muted||active.held;
-    if(active.muted&&active.speech){try{speechSynthesis.cancel();}catch{}}
     updateControl($('muteButton'),active.muted,'Muted','Mute');
     toPage({kind:'state',muted:active.muted,held:active.held});
   });
   $('holdButton').addEventListener('click',()=>{
     if(!active)return;active.held=!active.held;
     if(active.audioEl){const a=active.audioEl.audio;a.muted=active.muted||active.held;if(active.held)a.pause();else a.play().catch(()=>{});}
-    if(active.held&&active.speech){try{speechSynthesis.pause();}catch{}}
-    if(!active.held&&active.speech){try{speechSynthesis.resume();}catch{}}
     updateControl($('holdButton'),active.held,'Resume','Hold');
     toPage({kind:'state',muted:active.muted,held:active.held});
   });
   document.addEventListener('keydown',event=>{
     if(event.ctrlKey||event.metaKey||event.altKey)return;
     if(!$('callView').hidden) {
-      if(event.key==='Escape'){if(!$('inlineKeypad').hidden){$('inlineKeypad').hidden=true;updateControl($('keypadButton'),false,'Hide keypad','Keypad');}else clearActive();event.preventDefault();return;}
+      if(event.key==='Escape'){if(!$('inlineKeypad').hidden){setKeypad(false);}else clearActive();event.preventDefault();return;}
       if('0123456789*#'.includes(event.key)&&event.key.length===1){pressTone(event.key);event.preventDefault();return;}
       return;
     }

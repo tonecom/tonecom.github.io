@@ -9,7 +9,8 @@
  *   1. Asks the caller to type a 5-digit US zip code on the keypad.
  *   2. Looks the zip code up (api.zippopotam.us -> latitude/longitude).
  *   3. Gets the forecast (api.open-meteo.com, no API key needed).
- *   4. Reads it back using an external text-to-speech API.
+ *   4. Reads it back by fetching audio from an external TTS API and sending
+ *      that audio to the dialer (the dialer is speakers-only — no client TTS).
  *
  * Keys:  0-9 enter digits   * start over   # repeat the prompt
  *        Typing while it is talking interrupts it.
@@ -18,12 +19,13 @@
   const ZIP_LENGTH = 5;
 
   /* ------------------------------------------------------------------
-   * External text-to-speech.
+   * External text-to-speech → audio for the dialer.
+   * The dialer never speaks on its own; it only plays audio you send.
    * Return {url} for a service that serves audio from a plain GET URL
    * (the dialer plays it in an <audio> element, so no CORS is involved), or
    * {data: ArrayBuffer, mime: 'audio/mpeg'} if you need to POST or send an
    * API key: fetch the bytes here and return them.
-   * If this fails, the call falls back to the browser's built-in voice.
+   * Works from a fully static page — no server of your own required.
    * ------------------------------------------------------------------ */
   const TTS = {
     async synthesize(text) {
@@ -73,9 +75,8 @@
   });
   window.parent.postMessage({ tonecom: 1, kind: 'ready', protocol: 'ToneCOM', version: 1 }, '*');
 
-  /* ---------------- Speaking ---------------- */
+  /* ---------------- Voice (audio only — dialer is speakers-only) ---------------- */
   let gen = 0;            // bumping this cancels any speech still in progress
-  let ttsFailed = false;  // after one failure, stop trying the external API for this call
 
   const chunksOf = (text) => (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
 
@@ -84,15 +85,13 @@
     for (const chunk of chunksOf(text)) {
       if (mine !== gen) return;
       let result = { ok: false };
-      if (!ttsFailed) {
-        try { result = await request('audio', await TTS.synthesize(chunk)); }
-        catch { result = { ok: false }; }
-        if (mine !== gen) return;
-        if (!result.ok) ttsFailed = true;
-      }
+      try { result = await request('audio', await TTS.synthesize(chunk)); }
+      catch { result = { ok: false }; }
+      if (mine !== gen) return;
       if (!result.ok) {
-        result = await request('say', { text: chunk });      // built-in voice as a fallback
-        if (mine !== gen) return;
+        // No client-side TTS fallback — keep the caption visible and move on.
+        caption(chunk);
+        break;
       }
     }
   }
