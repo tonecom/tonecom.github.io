@@ -353,25 +353,28 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   }
 
   // ---------------------------------------------------------------------------
-  // Destination pages — pure voice system.
-  // A ToneCOM destination is a normal web page served at  <host>/.tonecom/index.html
-  // It is loaded in a hidden iframe with its real origin (sandbox="allow-scripts
-  // allow-same-origin"), so it behaves like any webpage: it can call its own server
-  // freely and other sites under ordinary browser rules. It cannot touch this dialer,
-  // navigate it, open popups, or use the microphone/camera. It talks to the dialer
-  // only through postMessage.
+  // Destination pages — pure voice over WebRTC.
+  // A ToneCOM destination is a normal web page at <host>/.tonecom/index.html,
+  // loaded in a hidden iframe (sandbox="allow-scripts allow-same-origin").
+  // It cannot touch this dialer, navigate it, open popups, or use mic/camera.
   //
-  // The dialer is a SPEAKER ONLY: it never synthesizes speech itself. Destinations
-  // send ready-to-play audio (URL or ArrayBuffer). That works from a static page —
-  // no media server, no WebRTC signaling server required. Audio travels over the
-  // existing postMessage channel (or an https URL the dialer can fetch).
+  // Voice path: WebRTC audio track from the destination → dialer speakers.
+  // Signaling (SDP + ICE) is exchanged only via postMessage. No TURN/STUN
+  // server is required for parent↔iframe on the same machine; this works from
+  // fully static pages with no backend of your own.
+  //
+  // Discrete clips can also be sent as {kind:'audio', id, url|data} — the dialer
+  // plays them into the same speaker path. There is NO client text-to-speech and
+  // the dialer never speaks text.
   //
   //   page -> dialer   {tonecom:1, kind:'ready', protocol:'ToneCOM', version:1}
-  //                    {kind:'audio', id, url}  or  {kind:'audio', id, data:ArrayBuffer, mime}
+  //                    {kind:'signal', sdp|candidate}
+  //                    {kind:'audio', id, url}  or  {kind:'audio', id, data, mime}
   //                    {kind:'stop'}  {kind:'caption', text}  {kind:'keypad', open}  {kind:'end'}
-  //   dialer -> page   {tonecom:1, kind:'init', request:{host, suffix, type, ...}}
+  //   dialer -> page   {tonecom:1, kind:'init', request:{...}}
+  //                    {kind:'signal', sdp|candidate}
   //                    {kind:'dtmf', key}  {kind:'state', muted, held}
-  //                    {kind:'done', id, ok, error}   when audio finishes (or fails)
+  //                    {kind:'done', id, ok, error}
   // ---------------------------------------------------------------------------
   const ENTRY_PATH = '/.tonecom/index.html';
   const MAX_CAPTION = 600;
@@ -389,15 +392,38 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     updateControl($('keypadButton'), open, 'Hide keypad', 'Keypad');
   }
 
-  function stopOutput() {
+  function applySpeakerMute() {
+    if (!active) return;
+    const muted = !!(active.muted || active.held);
+    if (active.remoteAudio) active.remoteAudio.muted = muted;
+    if (active.audioEl) active.audioEl.audio.muted = muted;
+  }
+
+  function stopClip() {
     if (!active) return;
     const rec = active.audioEl;
     if (rec) {
       active.audioEl = null;
       rec.finish(false, 'interrupted');
-      rec.audio.pause(); rec.audio.removeAttribute('src'); rec.audio.load();
+      try { rec.audio.pause(); rec.audio.removeAttribute('src'); rec.audio.load(); } catch {}
     }
   }
+  function stopOutput() {
+    stopClip();
+  }
+
+  function closePeer() {
+    if (!active) return;
+    if (active.remoteAudio) {
+      try { active.remoteAudio.pause(); active.remoteAudio.srcObject = null; } catch {}
+      active.remoteAudio = null;
+    }
+    if (active.pc) {
+      try { active.pc.onicecandidate = null; active.pc.ontrack = null; active.pc.close(); } catch {}
+      active.pc = null;
+    }
+  }
+
   function dropFrame() {
     if (!active) return;
     if (active.timer) { clearTimeout(active.timer); active.timer = null; }
@@ -407,6 +433,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   function stopMedia() {
     if (!active) return;
     stopOutput();
+    closePeer();
     dropFrame();
   }
   function clearActive() {
@@ -420,9 +447,61 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     renderDigits();
   }
 
+  /* ---- WebRTC speaker path (parent receives remote audio track) ---- */
+  function ensureRemoteAudio() {
+    if (!active) return null;
+    if (active.remoteAudio) return active.remoteAudio;
+    const a = new Audio();
+    a.autoplay = true;
+    a.playsInline = true;
+    a.muted = !!(active.muted || active.held);
+    active.remoteAudio = a;
+    return a;
+  }
+
+  function setupPeerAsAnswerer() {
+    if (!active || active.pc) return active && active.pc;
+    const pc = new RTCPeerConnection({
+      // Parent↔iframe is same-host loopback; empty ICE servers avoid external deps.
+      iceServers: []
+    });
+    active.pc = pc;
+    pc.onicecandidate = (ev) => {
+      if (ev.candidate) toPage({ kind: 'signal', candidate: ev.candidate.toJSON() });
+    };
+    pc.ontrack = (ev) => {
+      const el = ensureRemoteAudio();
+      const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
+      el.srcObject = stream;
+      el.muted = !!(active.muted || active.held);
+      el.play().catch(() => {});
+    };
+    return pc;
+  }
+
+  async function handleSignalFromPage(m) {
+    if (!active) return;
+    const pc = setupPeerAsAnswerer();
+    try {
+      if (m.sdp) {
+        await pc.setRemoteDescription(m.sdp);
+        if (m.sdp.type === 'offer') {
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          toPage({ kind: 'signal', sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } });
+        }
+      } else if (m.candidate) {
+        try { await pc.addIceCandidate(m.candidate); } catch {}
+      }
+    } catch (err) {
+      console.warn('ToneCOM signal error', err);
+    }
+  }
+
+  /* ---- Discrete clip playback (still pure audio, never text) ---- */
   function playAudio(m) {
     if (!active) return;
-    stopOutput();
+    stopClip();
     const id = cleanId(m.id);
     let src, objectUrl = null;
     try {
@@ -440,7 +519,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     } catch (err) { toPage({kind:'done', id, ok:false, error:String(err.message || err)}); return; }
     const audio = new Audio();
     audio.preload = 'auto';
-    audio.muted = active.muted || active.held;
+    audio.muted = !!(active.muted || active.held);
     const rec = { audio, finished:false, finish(ok, error) {
       if (rec.finished) return;
       rec.finished = true;
@@ -457,7 +536,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
 
   function onPageMessage(event) {
     if (!active || !active.frame || event.source !== active.frame.contentWindow) return;
-    if (event.origin !== active.origin) return;          // ignore anything that is not the dialed site
+    if (event.origin !== active.origin) return;
     const m = event.data;
     if (!m || typeof m !== 'object' || m.tonecom !== 1) return;
     if (!active.ready) {
@@ -469,11 +548,14 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
       active.ready = true;
       if (active.timer) { clearTimeout(active.timer); active.timer = null; }
       const a = active.address;
+      // Prepare WebRTC answerer before init so early offers are accepted.
+      setupPeerAsAnswerer();
       toPage({kind:'init', request:{protocol:'ToneCOM',version:1,host:a.host,suffix:a.suffix,suffixCode:a.suffixCode,type:a.type,typeName:a.typeName,options:a.options}});
       if (active.onReady) active.onReady();
       return;
     }
     switch (m.kind) {
+      case 'signal':  handleSignalFromPage(m); break;
       case 'audio':   playAudio(m); break;
       case 'stop':    stopOutput(); break;
       case 'caption': setCaption(m.text); break;
@@ -515,7 +597,7 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
     try { address = parseAddress(digits); }
     catch (err) { notify(err.message, 4800); return; }
     let baseUrl = getBaseUrl(address, false);
-    active = {address, baseUrl, origin:null, frame:null, ready:false, timer:null, muted:false, held:false, audioEl:null};
+    active = {address, baseUrl, origin:null, frame:null, ready:false, timer:null, muted:false, held:false, audioEl:null, pc:null, remoteAudio:null};
     $('callView').hidden = false;
     $('callSuffix').textContent = address.suffix || (address.type==='2' ? 'IPv4' : address.type==='3' ? 'Local IPv4' : 'Local host');
     $('callHost').textContent = address.host;
@@ -582,13 +664,15 @@ body{padding:clamp(14px,3.5vw,30px) 16px max(24px,env(safe-area-inset-bottom));a
   });
   $('muteButton').addEventListener('click',()=>{
     if(!active)return;active.muted=!active.muted;
-    if(active.audioEl)active.audioEl.audio.muted=active.muted||active.held;
+    applySpeakerMute();
     updateControl($('muteButton'),active.muted,'Muted','Mute');
     toPage({kind:'state',muted:active.muted,held:active.held});
   });
   $('holdButton').addEventListener('click',()=>{
     if(!active)return;active.held=!active.held;
-    if(active.audioEl){const a=active.audioEl.audio;a.muted=active.muted||active.held;if(active.held)a.pause();else a.play().catch(()=>{});}
+    applySpeakerMute();
+    if(active.audioEl){const a=active.audioEl.audio;if(active.held)a.pause();else a.play().catch(()=>{});}
+    if(active.remoteAudio){if(active.held)active.remoteAudio.pause();else active.remoteAudio.play().catch(()=>{});}
     updateControl($('holdButton'),active.held,'Resume','Hold');
     toPage({kind:'state',muted:active.muted,held:active.held});
   });
